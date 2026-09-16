@@ -1,12 +1,14 @@
 'use client';
 
-const NAV: Array<{ label: string; tour: string }> = [
-  { label: 'Score', tour: 'score' },
-  { label: 'Curve', tour: 'curve' },
-  { label: 'Ask', tour: 'ask' },
-  { label: 'Defense', tour: 'defense' },
-  { label: 'Log', tour: 'log' },
-  { label: 'Export', tour: 'export' },
+import { useEffect, useState } from 'react';
+
+const NAV: Array<{ label: string; tour: string; num: string }> = [
+  { label: 'Score', tour: 'score', num: '01' },
+  { label: 'Curve', tour: 'curve', num: '02' },
+  { label: 'Ask', tour: 'ask', num: '03' },
+  { label: 'Defense', tour: 'defense', num: '04' },
+  { label: 'Log', tour: 'log', num: '05' },
+  { label: 'Export', tour: 'export', num: '06' },
 ];
 
 export default function Header({
@@ -24,6 +26,29 @@ export default function Header({
   onUpload: () => void;
   onNav: (tour: string) => void;
 }) {
+  // Scroll-spy: highlight the section crossing the viewport middle. Re-observes
+  // when guided/full re-mounts sections. Click sets it immediately (no wait).
+  const [active, setActive] = useState<string>('score');
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll('[data-tour]'));
+    if (els.length === 0) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setActive(e.target.getAttribute('data-tour') ?? '');
+        }
+      },
+      { rootMargin: '-40% 0px -55% 0px', threshold: 0 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [guided]);
+
+  const go = (tour: string) => {
+    setActive(tour);
+    onNav(tour);
+  };
+
   return (
     <header
       className="sticky top-0 z-40 border-b backdrop-blur-xl"
@@ -56,18 +81,25 @@ export default function Header({
           </span>
         </div>
 
-        {/* section nav */}
+        {/* section nav — numbered, scroll-spied */}
         <nav className="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Desk sections">
-          {NAV.map((n) => (
-            <button
-              key={n.tour}
-              onClick={() => onNav(n.tour)}
-              className="rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors hover:bg-white/[0.05]"
-              style={{ color: 'var(--ink-2)' }}
-            >
-              {n.label}
-            </button>
-          ))}
+          {NAV.map((n) => {
+            const isActive = active === n.tour;
+            return (
+              <button
+                key={n.tour}
+                onClick={() => go(n.tour)}
+                aria-current={isActive ? 'true' : undefined}
+                className="flex items-baseline gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors hover:bg-white/[0.05]"
+                style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
+              >
+                <span className="font-num text-[10px]" style={{ color: isActive ? 'var(--accent)' : 'var(--ink-3)' }}>
+                  {n.num}
+                </span>
+                {n.label}
+              </button>
+            );
+          })}
         </nav>
         <div className="min-w-0 flex-1 lg:hidden" />
 
@@ -121,6 +153,27 @@ export default function Header({
           </button>
         </div>
       </div>
+
+      {/* mobile section nav — horizontal strip, same spy state */}
+      <nav className="border-t lg:hidden" style={{ borderColor: 'var(--border)' }} aria-label="Desk sections">
+        <div className="flex items-center gap-1 overflow-x-auto px-4 py-1.5">
+          {NAV.map((n) => {
+            const isActive = active === n.tour;
+            return (
+              <button
+                key={n.tour}
+                onClick={() => go(n.tour)}
+                aria-current={isActive ? 'true' : undefined}
+                className="font-num flex shrink-0 items-baseline gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors"
+                style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
+              >
+                <span style={{ color: isActive ? 'var(--accent)' : 'var(--ink-3)' }}>{n.num}</span>
+                {n.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </header>
   );
 }

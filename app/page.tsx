@@ -662,21 +662,49 @@ export default function TradeMirrorPage() {
             />
           </Reveal>
 
-          <footer
-            className="font-num flex flex-wrap items-center gap-x-4 gap-y-1 px-1 pb-6 pt-2 text-[11px]"
-            style={{ color: 'var(--ink-3)' }}
-          >
-            <span>TradeMirror · Bitget AI Base Camp Hackathon S2 · Track 3 · Review &amp; Self-Evolution</span>
-            <a className="underline underline-offset-2" href="https://www.bitget.com/activity-hub/hackathon" target="_blank" rel="noreferrer">
-              activity hub
-            </a>
-            <a className="underline underline-offset-2" href="https://bitget-ai.gitbook.io/bitgetai_hackathons2" target="_blank" rel="noreferrer">
-              developer guide
-            </a>
-            <a className="underline underline-offset-2" href="https://github.com/Bitget-AI/agent_hub" target="_blank" rel="noreferrer">
-              agent hub
-            </a>
-            <span className="ml-auto">forensic + educational tool — not financial advice · paper/sim validation</span>
+          <footer className="mt-2 border-t px-1 pb-6 pt-4" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+              <div>
+                <div className="font-display text-[13px] font-bold tracking-tight" style={{ color: 'var(--ink-1)' }}>
+                  TradeMirror
+                </div>
+                <div className="font-num mt-1 text-[11px]" style={{ color: 'var(--ink-3)' }}>
+                  Bitget AI Base Camp Hackathon S2 · Track 3 · Review &amp; Self-Evolution
+                </div>
+              </div>
+              <nav className="flex flex-wrap items-start gap-x-8 gap-y-3" aria-label="Project links">
+                <div>
+                  <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Hackathon
+                  </div>
+                  <div className="font-num mt-1.5 flex items-center gap-4 text-[11px] font-semibold">
+                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://www.bitget.com/activity-hub/hackathon" target="_blank" rel="noreferrer">
+                      Activity hub ↗
+                    </a>
+                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://bitget-ai.gitbook.io/bitgetai_hackathons2" target="_blank" rel="noreferrer">
+                      Developer guide ↗
+                    </a>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                    Build
+                  </div>
+                  <div className="font-num mt-1.5 flex items-center gap-4 text-[11px] font-semibold">
+                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/Bitget-AI/agent_hub" target="_blank" rel="noreferrer">
+                      Agent hub ↗
+                    </a>
+                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/hackid02/trademirror" target="_blank" rel="noreferrer">
+                      Source code ↗
+                    </a>
+                  </div>
+                </div>
+              </nav>
+            </div>
+            <div className="font-num mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]" style={{ color: 'var(--ink-3)' }}>
+              <span>Forensic + educational tool — not financial advice · paper/sim validation · no live orders</span>
+              <span>Deterministic engine · Qwen synthesis when keyed</span>
+            </div>
           </footer>
         </main>
 
