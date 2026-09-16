@@ -102,19 +102,22 @@ export default function MarketBar() {
             className="flex items-center gap-2 rounded-lg px-2.5 py-1"
             style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
             title={session.open ? 'US cash market is open' : 'rTokens trading without underlying price discovery'}
+            suppressHydrationWarning
           >
             <span
               className="flex items-center gap-1.5 font-semibold"
               style={{ color: session.open ? 'var(--alpha)' : 'var(--risk)' }}
+              suppressHydrationWarning
             >
               <span
                 className={`inline-block h-1.5 w-1.5 rounded-full ${session.open ? '' : 'live-dot'}`}
                 style={{ background: 'currentColor' }}
+                suppressHydrationWarning
               />
               {session.open ? 'NYSE OPEN' : 'NYSE CLOSED'}
             </span>
             <span className="tabular-nums" style={{ color: 'var(--ink-3)' }}>
-              <span className="hidden sm:inline">{session.nextLabel} </span>
+              <span className="hidden sm:inline" suppressHydrationWarning>{session.nextLabel} </span>
               <span style={{ color: 'var(--ink-2)' }} suppressHydrationWarning>{fmtCountdown(session.nextMs - now)}</span>
             </span>
           </span>
