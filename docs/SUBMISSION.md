@@ -5,8 +5,8 @@ Form: https://forms.gle/GyWZCMCPocgJdJon6 · Handbook: https://bitget-ai.gitbook
 
 ## Materials (all links go in the form's "Submission Materials Link" field)
 
-- [ ] GitHub repo (public): `https://github.com/<you>/trademirror`
-- [ ] Live demo (Vercel): `https://<project>.vercel.app` — verify cold load + tour + ask + export
+- [x] GitHub repo (public): `https://github.com/hackid02/trademirror`
+- [x] Live demo (Vercel): `https://trademirror-btgt.vercel.app` (fallback `https://trademirror-hackid3.vercel.app`) — verified 3/3 clean loads
 - [ ] Screen recording (optional, recommended): 2-min walkthrough per `docs/DEMO.md` (unlisted YouTube / Loom)
 - [ ] X post link goes in its own form field, NOT here
 
