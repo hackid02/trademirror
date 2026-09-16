@@ -662,48 +662,104 @@ export default function TradeMirrorPage() {
             />
           </Reveal>
 
-          <footer className="mt-2 border-t px-1 pb-6 pt-4" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-              <div>
-                <div className="font-display text-[13px] font-bold tracking-tight" style={{ color: 'var(--ink-1)' }}>
-                  TradeMirror
+          <footer className="mt-4 overflow-hidden rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex flex-wrap gap-x-12 gap-y-6 px-5 py-5 sm:px-6">
+              <div className="min-w-[230px] flex-1">
+                <div className="flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      d="M12 3v18M12 3l7 4.5M12 3L5 7.5M12 21l7-4.5M12 21l-7-4.5M5 7.5v9M19 7.5v9"
+                      stroke="var(--accent)"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12" r="2.4" fill="var(--accent)" />
+                  </svg>
+                  <span className="font-display text-[14px] font-bold tracking-tight" style={{ color: 'var(--ink-1)' }}>
+                    TradeMirror
+                  </span>
+                  <span
+                    className="font-num rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                    style={{ color: 'var(--accent)', background: 'var(--accent-soft)' }}
+                  >
+                    BITGET S2 · T3
+                  </span>
                 </div>
-                <div className="font-num mt-1 text-[11px]" style={{ color: 'var(--ink-3)' }}>
+                <p className="mt-2 max-w-[300px] text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+                  See why your PnL bled — priced in dollars, defended by guardrails.
+                </p>
+                <p className="font-num mt-1.5 text-[11px]" style={{ color: 'var(--ink-3)' }}>
                   Bitget AI Base Camp Hackathon S2 · Track 3 · Review &amp; Self-Evolution
-                </div>
+                </p>
               </div>
-              <nav className="flex flex-wrap items-start gap-x-8 gap-y-3" aria-label="Project links">
-                <div>
-                  <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
-                    Hackathon
-                  </div>
-                  <div className="font-num mt-1.5 flex items-center gap-4 text-[11px] font-semibold">
-                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://www.bitget.com/activity-hub/hackathon" target="_blank" rel="noreferrer">
-                      Activity hub ↗
-                    </a>
-                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://bitget-ai.gitbook.io/bitgetai_hackathons2" target="_blank" rel="noreferrer">
-                      Developer guide ↗
-                    </a>
-                  </div>
+              <nav aria-label="Footer sections">
+                <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                  Explore
                 </div>
-                <div>
-                  <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
-                    Build
-                  </div>
-                  <div className="font-num mt-1.5 flex items-center gap-4 text-[11px] font-semibold">
-                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/Bitget-AI/agent_hub" target="_blank" rel="noreferrer">
-                      Agent hub ↗
-                    </a>
-                    <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/hackid02/trademirror" target="_blank" rel="noreferrer">
-                      Source code ↗
-                    </a>
-                  </div>
+                <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5">
+                  {[
+                    { label: 'Score', tour: 'score' },
+                    { label: 'Curve', tour: 'curve' },
+                    { label: 'Ask', tour: 'ask' },
+                    { label: 'Defense', tour: 'defense' },
+                    { label: 'Log', tour: 'log' },
+                    { label: 'Export', tour: 'export' },
+                  ].map((n) => (
+                    <button
+                      key={n.tour}
+                      onClick={() => onNav(n.tour)}
+                      className="w-fit text-[12px] font-semibold transition-colors hover:underline hover:underline-offset-2"
+                      style={{ color: 'var(--ink-2)' }}
+                    >
+                      {n.label}
+                    </button>
+                  ))}
+                </div>
+              </nav>
+              <nav aria-label="Project links">
+                <div className="font-num text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--ink-3)' }}>
+                  Resources
+                </div>
+                <div className="font-num mt-2 flex flex-col items-start gap-y-1.5 text-[12px] font-semibold">
+                  <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://www.bitget.com/activity-hub/hackathon" target="_blank" rel="noreferrer">
+                    Activity hub ↗
+                  </a>
+                  <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://bitget-ai.gitbook.io/bitgetai_hackathons2" target="_blank" rel="noreferrer">
+                    Developer guide ↗
+                  </a>
+                  <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/Bitget-AI/agent_hub" target="_blank" rel="noreferrer">
+                    Agent hub ↗
+                  </a>
+                  <a className="transition-colors hover:underline hover:underline-offset-2" style={{ color: 'var(--ink-2)' }} href="https://github.com/hackid02/trademirror" target="_blank" rel="noreferrer">
+                    Source code ↗
+                  </a>
                 </div>
               </nav>
             </div>
-            <div className="font-num mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]" style={{ color: 'var(--ink-3)' }}>
+            <div
+              className="font-num flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t px-5 py-3 text-[11px] sm:px-6"
+              style={{ borderColor: 'var(--border)', color: 'var(--ink-3)' }}
+            >
               <span>Forensic + educational tool — not financial advice · paper/sim validation · no live orders</span>
-              <span>Deterministic engine · Qwen synthesis when keyed</span>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>
+                  {personaName} · {comp.metrics.totalTrades} trades · {comp.metrics.score}/{comp.metrics.grade}
+                </span>
+                <span aria-hidden>·</span>
+                <button
+                  onClick={() =>
+                    window.scrollTo({
+                      top: 0,
+                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                    })
+                  }
+                  className="font-semibold transition-colors hover:underline hover:underline-offset-2"
+                  style={{ color: 'var(--ink-2)' }}
+                >
+                  Back to top ↑
+                </button>
+              </span>
             </div>
           </footer>
         </main>
