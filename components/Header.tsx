@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-const NAV: Array<{ label: string; tour: string; num: string }> = [
-  { label: 'Score', tour: 'score', num: '01' },
-  { label: 'Curve', tour: 'curve', num: '02' },
-  { label: 'Ask', tour: 'ask', num: '03' },
-  { label: 'Defense', tour: 'defense', num: '04' },
-  { label: 'Log', tour: 'log', num: '05' },
-  { label: 'Export', tour: 'export', num: '06' },
+const NAV: Array<{ label: string; tour: string }> = [
+  { label: 'Score', tour: 'score' },
+  { label: 'Curve', tour: 'curve' },
+  { label: 'Ask', tour: 'ask' },
+  { label: 'Defense', tour: 'defense' },
+  { label: 'Log', tour: 'log' },
+  { label: 'Export', tour: 'export' },
 ];
 
 export default function Header({
@@ -81,8 +81,8 @@ export default function Header({
           </span>
         </div>
 
-        {/* section nav — numbered, scroll-spied */}
-        <nav className="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Desk sections">
+        {/* section nav */}
+        <nav className="hidden min-w-0 flex-1 items-center gap-1 lg:flex" aria-label="Desk sections">
           {NAV.map((n) => {
             const isActive = active === n.tour;
             return (
@@ -90,12 +90,9 @@ export default function Header({
                 key={n.tour}
                 onClick={() => go(n.tour)}
                 aria-current={isActive ? 'true' : undefined}
-                className="flex items-baseline gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors hover:bg-white/[0.05]"
+                className="rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors hover:bg-white/[0.05]"
                 style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
               >
-                <span className="font-num text-[10px]" style={{ color: isActive ? 'var(--accent)' : 'var(--ink-3)' }}>
-                  {n.num}
-                </span>
                 {n.label}
               </button>
             );
@@ -164,10 +161,9 @@ export default function Header({
                 key={n.tour}
                 onClick={() => go(n.tour)}
                 aria-current={isActive ? 'true' : undefined}
-                className="font-num flex shrink-0 items-baseline gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors"
+                className="shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-[12px] font-semibold transition-colors"
                 style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
               >
-                <span style={{ color: isActive ? 'var(--accent)' : 'var(--ink-3)' }}>{n.num}</span>
                 {n.label}
               </button>
             );
