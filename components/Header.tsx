@@ -54,7 +54,7 @@ export default function Header({
       className="sticky top-0 z-40 border-b backdrop-blur-xl"
       style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--canvas) 82%, transparent)' }}
     >
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 sm:px-6">
+      <div className="relative mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 sm:px-6">
         {/* identity */}
         <div className="flex shrink-0 items-center gap-2.5">
           <div
@@ -81,24 +81,29 @@ export default function Header({
           </span>
         </div>
 
-        {/* section nav */}
-        <nav className="hidden min-w-0 flex-1 items-center gap-1 lg:flex" aria-label="Desk sections">
-          {NAV.map((n) => {
-            const isActive = active === n.tour;
-            return (
-              <button
-                key={n.tour}
-                onClick={() => go(n.tour)}
-                aria-current={isActive ? 'true' : undefined}
-                className="rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors hover:bg-white/[0.05]"
-                style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
-              >
-                {n.label}
-              </button>
-            );
-          })}
+        {/* centered segment — absolute middle of the header */}
+        <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 xl:block" aria-label="Desk sections">
+          <div
+            className="flex items-center gap-0.5 rounded-full p-1"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          >
+            {NAV.map((n) => {
+              const isActive = active === n.tour;
+              return (
+                <button
+                  key={n.tour}
+                  onClick={() => go(n.tour)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-white/[0.05]"
+                  style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
+                >
+                  {n.label}
+                </button>
+              );
+            })}
+          </div>
         </nav>
-        <div className="min-w-0 flex-1 lg:hidden" />
+        <div className="min-w-0 flex-1" />
 
         {/* actions */}
         <div className="flex shrink-0 items-center gap-2">
@@ -151,23 +156,28 @@ export default function Header({
         </div>
       </div>
 
-      {/* mobile section nav — horizontal strip, same spy state */}
-      <nav className="border-t lg:hidden" style={{ borderColor: 'var(--border)' }} aria-label="Desk sections">
-        <div className="flex items-center gap-1 overflow-x-auto px-4 py-1.5">
-          {NAV.map((n) => {
-            const isActive = active === n.tour;
-            return (
-              <button
-                key={n.tour}
-                onClick={() => go(n.tour)}
-                aria-current={isActive ? 'true' : undefined}
-                className="shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-[12px] font-semibold transition-colors"
-                style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
-              >
-                {n.label}
-              </button>
-            );
-          })}
+      {/* below-xl: full-width segmented control, evenly split */}
+      <nav className="border-t xl:hidden" style={{ borderColor: 'var(--border)' }} aria-label="Desk sections">
+        <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6">
+          <div
+            className="flex items-stretch gap-0.5 overflow-x-auto rounded-xl p-1"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          >
+            {NAV.map((n) => {
+              const isActive = active === n.tour;
+              return (
+                <button
+                  key={n.tour}
+                  onClick={() => go(n.tour)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className="min-w-[54px] flex-1 whitespace-nowrap rounded-lg px-1 py-1.5 text-center text-[11px] font-semibold transition-colors"
+                  style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : { color: 'var(--ink-2)' }}
+                >
+                  {n.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </nav>
     </header>
