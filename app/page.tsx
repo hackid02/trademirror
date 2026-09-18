@@ -380,17 +380,24 @@ export default function TradeMirrorPage() {
 
   // ── upload ────────────────────────────────────────────────────────────────
   const onFile = async (f: File) => {
+    const smooth = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     const text = await f.text();
     const parsed = parseUpload(text, f.name);
     if (parsed.trades.length === 0) {
       setNotices([`Could not ingest ${f.name}:`, ...parsed.errors.slice(0, 6)]);
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: smooth }));
       return;
     }
-    setCustom({ name: f.name.replace(/\.(csv|json)$/i, ''), trades: parsed.trades });
-    const msgs = [`Ingested ${parsed.trades.length} trades from ${f.name}.`];
+    const name = f.name.replace(/\.(csv|json)$/i, '');
+    setCustom({ name, trades: parsed.trades });
+    const msgs = [`✓ Ingested ${parsed.trades.length} trades from ${f.name} — now auditing ${name}.`];
     if (parsed.errors.length > 0) msgs.push(`${parsed.errors.length} rows skipped (see console).`);
     console.warn('[TradeMirror] skipped rows:', parsed.errors);
     setNotices(msgs);
+    // Make the switch unmissable: glide to the fresh scorecard.
+    requestAnimationFrame(() => {
+      document.querySelector('[data-tour="score"]')?.scrollIntoView({ behavior: smooth, block: 'start' });
+    });
   };
 
   const xText = useMemo(() => {
