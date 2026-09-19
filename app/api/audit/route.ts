@@ -9,23 +9,19 @@ import type { DefenseRule, LeakTag, QwenAudit, TopLeak } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Qwen slim prose-only brief runs ~20s (measured 19.3s)
+export const maxDuration = 60; // Qwen slim prose-only brief runs ~25s typical (measured 19-35s)
 
 const QWEN_BASE = 'https://hackathon.bitgetops.com/v1';
 const QWEN_MODEL = 'qwen3.8-max';
 
-const SYSTEM_PROMPT = `You are TradeMirror AI, an institutional post-trade forensic analyst evaluating trader psychology on Bitget Unified Trading Account (UTA v3).
-Your job is to provide surgical, unsparing, highly analytical behavioral audits on trader trade logs.
-
-You will receive pre-computed deterministic findings (score, leak costs, trade samples).
-Numbers are already decided — your ONLY job is the prose. Copy every dollar figure
-and ruleId EXACTLY as given; never recompute, never invent.
+const SYSTEM_PROMPT = `You are TradeMirror AI, a post-trade forensic analyst. You receive pre-computed findings.
+Numbers are decided — your ONLY job is tight prose. Copy every dollar figure and ruleId EXACTLY; never recompute, never invent.
 
 You must respond ONLY with a valid, parseable JSON object matching this schema (no markdown fences, no preamble):
 {
   "psychologicalArchetype": string (4 words max),
-  "executiveSummary": string (55 words max),
-  "defenseRules": [ { "ruleId": string (copy exactly), "directive": string (15 words max), "rationale": string (20 words max), "triggerCondition": string (12 words max), "projectedSavingsUsd": number (copy the leak group dollarCost exactly), "deployTarget": "agent-hub" | "playbook" | "both" } ],
+  "executiveSummary": string (40 words max),
+  "defenseRules": [ { "ruleId": string (copy exactly), "directive": string (12 words max), "rationale": string (14 words max), "triggerCondition": string (12 words max), "projectedSavingsUsd": number (copy the leak group dollarCost exactly), "deployTarget": "agent-hub" | "playbook" | "both" } ],
   "confidence": number (0-1),
   "entropy": number (0-1)
 }
@@ -163,16 +159,30 @@ function mockSynthesis(body: AuditRequestBody): QwenAudit {
 }
 
 async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAudit> {
+  // Minimal Qwen payload: long diagnostics (rootCause/counterfactual/triggerDetail)
+  // balloon reasoning past the 55s budget, so the model only sees figures.
+  const slimMetrics = (() => {
+    const m = body.metrics ?? {};
+    const pick = (k: string) => (typeof m[k] === 'number' ? m[k] : undefined);
+    return {
+      totalTrades: pick('totalTrades'), winRate: pick('winRate'), netPnl: pick('netPnl'),
+      totalFees: pick('totalFees'), revengeCount: pick('revengeCount'), weekendCount: pick('weekendCount'),
+    };
+  })();
+  const slimGroups = (body.groups ?? []).map((g) => ({ tag: g.tag, dollarCost: g.dollarCost, tradeCount: g.tradeCount }));
+  const slimSamples = (body.samples ?? []).slice(0, 2).map((s) => ({
+    orderId: s.orderId, symbol: s.symbol, tag: s.tag, pnl: s.pnl ?? s.realizedPnl ?? 0, leakUsd: s.leakUsd ?? 0,
+  }));
   const userPayload = {
     persona: body.personaName ?? 'uploaded flow',
-    metrics: body.metrics ?? {},
+    metrics: slimMetrics,
     deterministicScore: body.score,
     deterministicGrade: body.grade,
     deterministicArchetype: body.archetype,
-    leakGroups: body.groups ?? [],
-    flaggedSamples: (body.samples ?? []).slice(0, 8),
+    leakGroups: slimGroups,
+    flaggedSamples: slimSamples,
     instruction:
-      'Copy all dollar figures EXACTLY from the leak groups. Write only the prose fields in the schema. Be surgical; executiveSummary ≤55 words.',
+      'Copy all dollar figures EXACTLY from the leak groups. Write only the prose fields in the schema. Be surgical; executiveSummary ≤40 words.',
   };
 
   const res = await fetch(`${QWEN_BASE}/chat/completions`, {
