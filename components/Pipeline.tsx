@@ -77,8 +77,8 @@ function StatusDots({
         style={{ color: 'var(--ink-2)' }}
         title={
           qwenOptIn
-            ? 'Cloud synthesis ON — click to disable (aggregate metrics + up to 12 flagged-trade samples go to the Qwen gateway while on)'
-            : 'Cloud synthesis OFF — click to enable (aggregate metrics + up to 12 flagged-trade samples will go to the Qwen gateway)'
+            ? 'Cloud synthesis ON — click to disable (aggregate metrics + up to 8 flagged-trade samples go to the Qwen gateway while on)'
+            : 'Cloud synthesis OFF — click to enable (aggregate metrics + up to 8 flagged-trade samples will go to the Qwen gateway)'
         }
       >
         <Dot color={qwen.c} pulse={brief.mode === 'running'} /> QWEN · {qwen.t}

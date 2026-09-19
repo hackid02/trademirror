@@ -9,7 +9,7 @@ import type { DefenseRule, LeakTag, QwenAudit, TopLeak } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Qwen reasoning + full-schema JSON runs ~45s
+export const maxDuration = 60; // Qwen slim prose-only brief runs ~20s (measured 19.3s)
 
 const QWEN_BASE = 'https://hackathon.bitgetops.com/v1';
 const QWEN_MODEL = 'qwen3.8-max';
@@ -17,30 +17,26 @@ const QWEN_MODEL = 'qwen3.8-max';
 const SYSTEM_PROMPT = `You are TradeMirror AI, an institutional post-trade forensic analyst evaluating trader psychology on Bitget Unified Trading Account (UTA v3).
 Your job is to provide surgical, unsparing, highly analytical behavioral audits on trader trade logs.
 
-You will receive:
-1. Aggregate metrics (win rate, gross PnL, total trades, volume).
-2. Algorithmic leak flags detected in their data (weekend illiquidity, revenge tilt, premature exits, exhaustion clusters).
-3. Sample flagged trade instances.
+You will receive pre-computed deterministic findings (score, leak costs, trade samples).
+Numbers are already decided — your ONLY job is the prose. Copy every dollar figure
+and ruleId EXACTLY as given; never recompute, never invent.
 
 You must respond ONLY with a valid, parseable JSON object matching this schema (no markdown fences, no preamble):
 {
-  "behavioralScore": number,
-  "letterGrade": string,
-  "psychologicalArchetype": string,
-  "executiveSummary": string,
-  "totalEstimatedLeakUsd": number,
-  "topLeaks": [ { "biasName": string, "tag": "WEEKEND_SPREAD" | "REVENGE_TILT" | "PREMATURE_EXIT" | "LOSS_AVERSION" | "EXHAUSTION_CLUSTER", "dollarCost": number, "tradeCount": number, "rootCause": string, "counterfactual": string } ],
-  "defenseRules": [ { "ruleId": string, "directive": string, "rationale": string, "triggerCondition": string, "projectedSavingsUsd": number, "deployTarget": "agent-hub" | "playbook" | "both" } ],
-  "shareableBlurb": string,
-  "confidence": number,
-  "entropy": number
+  "psychologicalArchetype": string (4 words max),
+  "executiveSummary": string (55 words max),
+  "defenseRules": [ { "ruleId": string (copy exactly), "directive": string (15 words max), "rationale": string (20 words max), "triggerCondition": string (12 words max), "projectedSavingsUsd": number (copy the leak group dollarCost exactly), "deployTarget": "agent-hub" | "playbook" | "both" } ],
+  "confidence": number (0-1),
+  "entropy": number (0-1)
 }
 
-Use ONLY these canonical ruleIds (omit a rule only if its leak group is absent from the evidence):
-- "Rule-W01 · Hard Lockout" for WEEKEND_SPREAD (rToken/closed-hours flow)
-- "Rule-T02 · 30m Cooldown" for REVENGE_TILT (post-loss urgency)
-- "Rule-H03 · Trailing Ratchet" for PREMATURE_EXIT (clipped winners)
-- "Rule-F04 · Session Governor" for EXHAUSTION_CLUSTER (fee-dense bursts)`;
+One rule per leak group in the evidence, using ONLY these canonical ruleIds:
+- "Rule-W01 · Hard Lockout" for WEEKEND_SPREAD
+- "Rule-T02 · 30m Cooldown" for REVENGE_TILT
+- "Rule-H03 · Trailing Ratchet" for PREMATURE_EXIT
+- "Rule-F04 · Session Governor" for EXHAUSTION_CLUSTER
+
+Write tight. Answer directly from the evidence. Do not overthink, do not hedge, no filler.`;
 
 interface AuditRequestBody {
   personaName?: string;
@@ -174,9 +170,9 @@ async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAud
     deterministicGrade: body.grade,
     deterministicArchetype: body.archetype,
     leakGroups: body.groups ?? [],
-    flaggedSamples: (body.samples ?? []).slice(0, 12),
+    flaggedSamples: (body.samples ?? []).slice(0, 8),
     instruction:
-      'Refine the deterministic findings into the audit JSON. Keep dollar figures consistent with the provided leak groups (±5%). Be surgical and specific; executiveSummary ≤120 words.',
+      'Copy all dollar figures EXACTLY from the leak groups. Write only the prose fields in the schema. Be surgical; executiveSummary ≤55 words.',
   };
 
   const res = await fetch(`${QWEN_BASE}/chat/completions`, {
@@ -192,7 +188,7 @@ async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAud
         { role: 'user', content: JSON.stringify(userPayload) },
       ],
       temperature: 0.3,
-      max_tokens: 1900,
+      max_tokens: 1000,
       response_format: { type: 'json_object' },
     }),
     signal: AbortSignal.timeout(55000),

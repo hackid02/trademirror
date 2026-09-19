@@ -208,7 +208,7 @@ export default function TradeMirrorPage() {
     abortRef.current = ctrl;
     setAuditRunning(true);
     try {
-      const samples = comp.flags.slice(0, 12).map((f) => {
+      const samples = comp.flags.slice(0, 8).map((f) => {
         const t = trades[f.tradeIndex];
         return {
           orderId: f.orderId,
