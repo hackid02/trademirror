@@ -1,6 +1,6 @@
 # TradeMirror · Submission checklist (Bitget S2 · Track 3: AI Trading Desk)
 
-Sub-theme: **Review & Self-Evolution** · Deadline: **Sept 21, 2026 24:00 UTC+8**
+Sub-theme: **Review & Self-Evolution** · Deadline: **Sept 27, 2026 (UTC+8)** — extended from 9/21 per handbook update
 Form: https://forms.gle/GyWZCMCPocgJdJon6 · Handbook: https://bitget-ai.gitbook.io/bitgetai_hackathons2
 
 ## Materials (all links go in the form's "Submission Materials Link" field)
@@ -12,9 +12,9 @@ Form: https://forms.gle/GyWZCMCPocgJdJon6 · Handbook: https://bitget-ai.gitbook
 
 ## X post (required — missing = invalid submission)
 
-- [ ] Substantive post introducing TradeMirror (dev log / demo showcase, not a bare retweet)
+- [ ] Substantive post introducing TradeMirror (dev log / demo showcase, not a bare retweet — drafts in `docs/X_POST.md`)
 - [ ] Contains `#BitgetHackathon` + `@Bitget_AI`
-- [ ] Retweet the official hackathon post (link from Telegram/form page)
+- [ ] QUOTE-post https://x.com/Bitget_AI/status/2100519318824055159 (required for Best Spread) AND retweet it (FAQ's retweet link still TBD — do both)
 
 ## Google Form
 

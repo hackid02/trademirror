@@ -23,19 +23,22 @@ curve, a natural-language audit they can interrogate, and armed guardrails
 ## Part 3 · Validation data and key metrics (labeled)
 
 Observed on seeded, reproducible personas (deterministic engine, no LLM in the loop):
-Weekend rToken Chaser — 44 trades, score 64/C, leak −$2,857.54 of −$3,501.79 net
-(Sharpe −4.89, win rate 29.5%); Revenge Scalper — 40 trades, 51/D; Disciplined Pro —
-54 trades, 96/A, $0 leak. Engine checks: 23/23 edge-case fuzz clean, two Playwright
-sweeps green (tour, citations, toggles, export, theme, reduced-motion), zero console
-errors. Targeted: 50 real UTA v3 uploads in month one; guardrail-armed cohorts
-cutting weekend leak ≥30% (tracked via re-audit delta). No live-user data yet —
-validation plan is re-audit deltas + guardrail adherence on real uploads.
+Weekend rToken Chaser — 44 trades, score 67/C, leak −$2,508.92 of −$3,501.79 net
+(daily Sharpe −10.55, win rate 29.5%); Revenge Scalper — 40 trades, 52/D;
+Disciplined Pro — 54 trades, 96/A, $0 leak. Engine checks: invariant gates green on
+all personas (score range, group-sum and clean−net reconciliation, heatmap/what-if/
+spark agreement) plus a duplicate-orderId fixture; two Playwright sweeps green
+(flows, tour, citations, guardrail toggles, export, theme, reduced-motion, mobile
+360/390 with zero page overflow); zero console errors. Targeted: 50 real UTA v3
+uploads in month one; guardrail-armed cohorts cutting weekend leak ≥30% (tracked via
+re-audit delta). No live-user data yet — validation plan is re-audit deltas +
+guardrail adherence on real uploads.
 
 ## Part 4 · Progress
 
 Built: 7-stage pipeline (recover→export), 4-detector engine (weekend-spread,
 premature-exit, revenge-tilt, off-hours), counterfactual twin chart, session
-heatmap, LUI ask-with-citations, 16-step guided tour, defense guardrail array,
+heatmap, LUI ask-with-citations, 8-stop guided tour, defense guardrail array,
 share/export cards, UTA v3 CSV/JSON upload. Stack: Next.js + TypeScript + Tailwind,
 `qwen3.8-max` via the hackathon gateway for narrative synthesis (strict-JSON,
 validated, deterministic fallback when no key). Not built: live-Qwen narratives in
