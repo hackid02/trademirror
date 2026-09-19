@@ -9,6 +9,7 @@ import type { DefenseRule, LeakTag, QwenAudit, TopLeak } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Qwen reasoning + full-schema JSON runs ~45s
 
 const QWEN_BASE = 'https://hackathon.bitgetops.com/v1';
 const QWEN_MODEL = 'qwen3.8-max';
@@ -175,7 +176,7 @@ async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAud
     leakGroups: body.groups ?? [],
     flaggedSamples: (body.samples ?? []).slice(0, 12),
     instruction:
-      'Refine the deterministic findings into the audit JSON. Keep dollar figures consistent with the provided leak groups (±5%). Be surgical and specific.',
+      'Refine the deterministic findings into the audit JSON. Keep dollar figures consistent with the provided leak groups (±5%). Be surgical and specific; executiveSummary ≤120 words.',
   };
 
   const res = await fetch(`${QWEN_BASE}/chat/completions`, {
@@ -191,10 +192,10 @@ async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAud
         { role: 'user', content: JSON.stringify(userPayload) },
       ],
       temperature: 0.3,
-      max_tokens: 2200,
+      max_tokens: 1900,
       response_format: { type: 'json_object' },
     }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(55000),
   });
 
   if (!res.ok) {

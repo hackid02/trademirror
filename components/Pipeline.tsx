@@ -39,14 +39,26 @@ function Dot({ color, pulse = true }: { color: string; pulse?: boolean }) {
   );
 }
 
-function StatusDots({ brief, engineMs }: { brief: BriefState; engineMs: number }) {
+function StatusDots({
+  brief,
+  engineMs,
+  qwenOptIn,
+  onToggleQwen,
+}: {
+  brief: BriefState;
+  engineMs: number;
+  qwenOptIn: boolean;
+  onToggleQwen: () => void;
+}) {
   const tape = useTapeStatus();
   const qwen =
     brief.mode === 'running'
       ? { c: 'var(--warn)', t: 'SYNC' }
       : brief.mode === 'qwen'
         ? { c: 'var(--alpha)', t: 'LIVE' }
-        : { c: 'var(--warn)', t: 'FALLBACK' };
+        : qwenOptIn
+          ? { c: 'var(--warn)', t: 'FALLBACK' }
+          : { c: 'var(--ink-3)', t: 'OFF' };
   const tapeState =
     tape === 'live'
       ? { c: 'var(--alpha)', t: 'LIVE' }
@@ -58,9 +70,19 @@ function StatusDots({ brief, engineMs }: { brief: BriefState; engineMs: number }
       <span className="flex items-center gap-1.5" style={{ color: 'var(--ink-2)' }} title={`Deterministic engine · ${engineMs.toFixed(1)}ms`}>
         <Dot color="var(--alpha)" pulse={false} /> ENGINE · {engineMs.toFixed(1)}MS
       </span>
-      <span className="flex items-center gap-1.5" style={{ color: 'var(--ink-2)' }} title={brief.mode === 'running' ? 'Qwen synthesis in flight' : `Brief: ${brief.mode} · ${brief.ms}ms`}>
+      <button
+        type="button"
+        onClick={onToggleQwen}
+        className="flex items-center gap-1.5 rounded-md transition-opacity hover:opacity-75"
+        style={{ color: 'var(--ink-2)' }}
+        title={
+          qwenOptIn
+            ? 'Cloud synthesis ON — click to disable (aggregate metrics + up to 12 flagged-trade samples go to the Qwen gateway while on)'
+            : 'Cloud synthesis OFF — click to enable (aggregate metrics + up to 12 flagged-trade samples will go to the Qwen gateway)'
+        }
+      >
         <Dot color={qwen.c} pulse={brief.mode === 'running'} /> QWEN · {qwen.t}
-      </span>
+      </button>
       <span className="flex items-center gap-1.5" style={{ color: 'var(--ink-2)' }} title="Bitget spot tape (60s refresh, SIM fallback)">
         <Dot color={tapeState.c} pulse={tape === 'live'} /> TAPE · {tapeState.t}
       </span>
@@ -80,6 +102,8 @@ export default function Pipeline({
   engineMs,
   onJump,
   onTour,
+  qwenOptIn,
+  onToggleQwen,
 }: {
   trades: number;
   flags: number;
@@ -92,6 +116,8 @@ export default function Pipeline({
   engineMs: number;
   onJump: (tour: string) => void;
   onTour: () => void;
+  qwenOptIn: boolean;
+  onToggleQwen: () => void;
 }) {
   const stages = [
     { n: '00', label: 'Recover', value: fmtUsd(recovered, true), sub: 'armed value', tour: 'curve', hint: 'Jump to the what-if curve' },
@@ -147,7 +173,7 @@ export default function Pipeline({
           >
             ▶ 60-sec guided tour
           </button>
-          <StatusDots brief={brief} engineMs={engineMs} />
+          <StatusDots brief={brief} engineMs={engineMs} qwenOptIn={qwenOptIn} onToggleQwen={onToggleQwen} />
         </div>
       </div>
     </Card>

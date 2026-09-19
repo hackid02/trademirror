@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Qwen reasoning runs ~20s; headroom for variance
 
 const QWEN_BASE = 'https://hackathon.bitgetops.com/v1';
 const QWEN_MODEL = 'qwen3.8-max';
@@ -179,7 +180,7 @@ async function callQwen(body: AskBody, apiKey: string): Promise<{ answer: string
       max_tokens: 700,
       response_format: { type: 'json_object' },
     }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(45000),
   });
   if (!res.ok) throw new Error(`Qwen HTTP ${res.status}`);
   const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };

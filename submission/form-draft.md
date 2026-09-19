@@ -41,9 +41,10 @@ premature-exit, revenge-tilt, off-hours), counterfactual twin chart, session
 heatmap, LUI ask-with-citations, 8-stop guided tour, defense guardrail array,
 share/export cards, UTA v3 CSV/JSON upload. Stack: Next.js + TypeScript + Tailwind,
 `qwen3.8-max` via the hackathon gateway for narrative synthesis (strict-JSON,
-validated, deterministic fallback when no key). Not built: live-Qwen narratives in
-the public demo (pending credits), guardrail adherence tracking, additional bias
-rules. Next: credits → live synthesis; adherence loop; Playbook listing review.
+validated, deterministic fallback when no key). Live in the public demo: Qwen
+narratives + Ask Mirror answers, opt-in per run (default off; nothing leaves the
+browser until the user enables cloud synthesis). Not built: guardrail adherence
+tracking, additional bias rules. Next: adherence loop; Playbook listing review.
 
 ## Part 5 · Deliverables
 
@@ -61,7 +62,10 @@ Anything the LLM says must survive with the LLM removed — ours does (fallback)
 Product: `qwen3.8-max` (hackathon gateway) synthesizes executive summaries and
 answers over engine-computed evidence; outputs are strict-JSON validated and every
 claim must cite order IDs — with no key, a deterministic fallback narrates instead,
-so the desk is fully usable unkeyed. (No Qwen build credits received; skipping the
-credits section per FAQ.) Build: AI coding assistants generated the codebase
+so the desk is fully usable unkeyed. (Qwen build credits received: $30-equivalent
+via the hackathon gateway (qwen3.8-max), used at runtime for audit narratives and
+Ask Mirror answers. The gateway meets the need — strict-JSON mode validates cleanly;
+reasoning latency ~30–45s is handled with a 55s route budget plus graceful deterministic
+fallback.) Build: AI coding assistants generated the codebase
 (pure-vibecode workflow) under human review; all displayed numbers come from the
 deterministic engine or seeded fixtures, never from model output.

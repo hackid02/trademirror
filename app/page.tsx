@@ -604,6 +604,8 @@ export default function TradeMirrorPage() {
               engineMs={engineMs}
               onJump={onJump}
               onTour={openTour}
+              qwenOptIn={qwenOptIn}
+              onToggleQwen={toggleQwen}
             />
           </Reveal>
 
