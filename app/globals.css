@@ -90,6 +90,7 @@ body {
   background-attachment: fixed;
   color: var(--ink);
   min-height: 100vh;
+  overflow-x: clip; /* phones: ambient layers + wide rails can never page-scroll (clip keeps sticky working) */
   -webkit-font-smoothing: antialiased;
 }
 

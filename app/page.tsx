@@ -608,7 +608,7 @@ export default function TradeMirrorPage() {
           </Reveal>
 
           {/* hero: scorecard + counterfactual */}
-          <div className="grid gap-4 lg:grid-cols-5">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-5 [&>*]:min-w-0">
             <Reveal className="lg:col-span-2" tour="score">
               <Scorecard
                 metrics={m}
@@ -637,7 +637,7 @@ export default function TradeMirrorPage() {
           </div>
 
           {/* LUI + heatmap */}
-          <div className={guided ? 'grid gap-4' : 'grid items-stretch gap-4 lg:grid-cols-5'}>
+          <div className={guided ? 'grid min-w-0 gap-4 [&>*]:min-w-0' : 'grid min-w-0 items-stretch gap-4 lg:grid-cols-5 [&>*]:min-w-0'}>
             <Reveal className={guided ? '' : 'lg:col-span-3'} tour="ask">
               <AskMirror getPayload={getAskPayload} onCite={onCite} flowKey={flowKey} actions={askActions} />
             </Reveal>
@@ -649,7 +649,7 @@ export default function TradeMirrorPage() {
           </div>
 
           {/* taxonomy + defense + detectors */}
-          <div className={guided ? 'grid items-stretch gap-4 md:grid-cols-2' : 'grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3'}>
+          <div className={guided ? 'grid min-w-0 items-stretch gap-4 md:grid-cols-2 [&>*]:min-w-0' : 'grid min-w-0 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0'}>
             <Reveal>
               <BiasTaxonomy groups={comp.groups} totalLeak={m.totalLeakUsd} armed={armed} onToggle={toggleRule} audit={audit} />
             </Reveal>

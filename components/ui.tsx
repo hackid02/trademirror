@@ -36,19 +36,19 @@ export function SectionTitle({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
-      <div>
+    <div className="mb-4 flex min-w-0 items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
         <div
           className="font-num text-[10px] font-semibold uppercase tracking-[0.22em]"
           style={{ color: 'var(--ink-3)' }}
         >
           {eyebrow}
         </div>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight" style={{ color: 'var(--ink)' }}>
+        <h2 className="mt-1 text-balance text-lg font-semibold tracking-tight" style={{ color: 'var(--ink)' }}>
           {title}
         </h2>
       </div>
-      {right}
+      {right && <div className="shrink-0">{right}</div>}
     </div>
   );
 }

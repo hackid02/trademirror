@@ -80,9 +80,10 @@ export default function LeakHeatmap({
         }
       />
 
-      {/* 7 × 24 grid — fits the column on desktop, scrolls inside itself on phones */}
+      {/* 7 × 24 grid — fits the column on desktop, scrolls inside itself on phones.
+          600px floor keeps cells ≥22px so they stay tappable. */}
       <div className="scroll-x -mx-1 px-1">
-        <div className="min-w-[430px] select-none">
+        <div className="min-w-[600px] select-none">
           <div className="grid" style={{ gridTemplateColumns: '28px repeat(24, 1fr)', gap: 2 }}>
             <div />
             {[0, 6, 12, 18].map((h) => (

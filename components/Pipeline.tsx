@@ -112,9 +112,9 @@ export default function Pipeline({
   return (
     <Card className="px-4 py-3">
       <div className="flex flex-col gap-3">
-        <div className="flex items-stretch gap-1 overflow-x-auto pb-0.5">
+        <div className="flex min-w-0 items-stretch gap-1 overflow-x-auto pb-0.5">
           {stages.map((s, i) => (
-            <div key={s.n} className="flex min-w-0 flex-1 items-stretch" style={{ minWidth: 104 }}>
+            <div key={s.n} className="flex min-w-0 flex-1 items-stretch" style={{ minWidth: 116 }}>
               <button
                 onClick={() => onJump(s.tour)}
                 title={s.hint}
@@ -123,11 +123,11 @@ export default function Pipeline({
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--accent)')}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
               >
-                <div className="font-num text-[9px] font-bold tracking-[0.16em]" style={{ color: 'var(--ink-3)' }}>
+                <div className="font-num whitespace-nowrap text-[9px] font-bold tracking-[0.16em]" style={{ color: 'var(--ink-3)' }}>
                   {s.n} · {s.label.toUpperCase()}
                 </div>
-                <div className="font-num truncate text-[15px] font-bold leading-tight">{s.value}</div>
-                <div className="font-num truncate text-[10px]" style={{ color: 'var(--ink-3)' }}>
+                <div className="font-num whitespace-nowrap text-[15px] font-bold leading-tight">{s.value}</div>
+                <div className="font-num whitespace-nowrap text-[10px]" style={{ color: 'var(--ink-3)' }}>
                   {s.sub}
                 </div>
               </button>
