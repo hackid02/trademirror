@@ -56,6 +56,7 @@ interface AuditRequestBody {
   score?: number;
   grade?: string;
   archetype?: string;
+  qwen?: boolean; // explicit false = force the deterministic fallback (cloud opt-out)
 }
 
 function money(n: number): string {
@@ -238,7 +239,9 @@ export async function POST(req: Request) {
   }
 
   const apiKey = process.env.BITGET_QWEN_API_KEY?.trim();
-  if (!apiKey) {
+  // Explicit client opt-out (the UI default): the deterministic fallback
+  // narrates without trade-derived data leaving for the LLM gateway.
+  if (!apiKey || body.qwen === false) {
     return NextResponse.json({
       source: 'mock',
       model: 'trademirror-deterministic/1.0',

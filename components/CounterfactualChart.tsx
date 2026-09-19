@@ -2,7 +2,7 @@
 
 import React, { useId, useMemo, useRef, useState } from 'react';
 import type { BitgetTradeLog, CurvePoint, LeakFlag, LeakTag } from '@/lib/types';
-import { fmtUsd } from '@/lib/engine';
+import { fmtUsd, cappedFlagCost } from '@/lib/engine';
 import { getNyseSession } from '@/lib/analysis';
 import { Card, SectionTitle } from './ui';
 
@@ -44,14 +44,14 @@ export default function CounterfactualChart({
   netPnl,
   cleanPnl,
   trades,
-  flagsByOrder,
+  flags,
   onMarkerClick,
 }: {
   curve: CurvePoint[];
   netPnl: number;
   cleanPnl: number;
   trades?: BitgetTradeLog[];
-  flagsByOrder?: Map<string, LeakFlag[]>;
+  flags?: LeakFlag[];
   onMarkerClick?: (orderId: string) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -109,18 +109,27 @@ export default function CounterfactualChart({
 
   // Flagged-trade markers on the actual curve
   const markers = useMemo(() => {
-    if (!trades || !flagsByOrder || geo.actual.length === 0) return [];
+    if (!trades || !flags || geo.actual.length === 0) return [];
     const sorted = [...trades].sort((a, b) => a.timestamp - b.timestamp);
+    // Join by tradeIndex (engine identity), cost via the single capped
+    // definition — markers reconcile with aggregates under duplicate orderIds.
+    const byIndex = new Map<number, LeakFlag[]>();
+    for (const f of flags) {
+      const arr = byIndex.get(f.tradeIndex) ?? [];
+      arr.push(f);
+      byIndex.set(f.tradeIndex, arr);
+    }
     const out: Array<{ i: number; x: number; y: number; orderId: string; tag: LeakTag; leak: number; symbol: string }> = [];
     sorted.forEach((t, i) => {
-      const fl = flagsByOrder.get(t.orderId);
+      const fl = byIndex.get(i);
       if (!fl || fl.length === 0 || !geo.actual[i]) return;
-      const top = [...fl].sort((a, b) => b.dollarCost - a.dollarCost)[0];
-      const leak = fl.reduce((s, f) => s + f.dollarCost, 0);
+      const cost = (f: LeakFlag) => cappedFlagCost(f, t);
+      const top = [...fl].sort((a, b) => cost(b) - cost(a))[0];
+      const leak = fl.reduce((s, f) => s + cost(f), 0);
       out.push({ i, x: geo.actual[i].x, y: geo.actual[i].y, orderId: t.orderId, tag: top.tag, leak, symbol: t.symbol });
     });
     return out;
-  }, [trades, flagsByOrder, geo.actual]);
+  }, [trades, flags, geo.actual]);
 
   // Per-tag biggest receipt (powers the legend jumps)
   const tagTops = useMemo(() => {

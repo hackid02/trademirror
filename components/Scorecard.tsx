@@ -394,7 +394,7 @@ export default function Scorecard({
         <Stat
           label="Sharpe"
           value={m.sharpe.toFixed(2)}
-          sub={`PF ${m.profitFactor.toFixed(2)}`}
+          sub={`PF ${Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : '∞'}`}
           tone={m.sharpe >= 1 ? 'alpha' : m.sharpe < 0 ? 'risk' : 'ink'}
         />
       </div>

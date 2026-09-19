@@ -4,6 +4,7 @@
 // and sparkline series. Pure functions.
 
 import type { BitgetTradeLog, CurvePoint, LeakFlag } from './types';
+import { cappedFlagCost } from './engine';
 
 export const ENGINE_RULE_IDS = [
   'LEAK_WEEKEND_RTOKEN',
@@ -32,6 +33,44 @@ export function mapRuleToEngine(ruleId: string, directive = ''): string | null {
   return null;
 }
 
+// ─── Duplicate-safe flag joins ─────────────────────────────────────────────
+// Partial-fill exports reuse orderIds across rows, so flags join by tradeIndex
+// (position in the timestamp-sorted array — the engine's identity) and are
+// exposed to components keyed by trade OBJECT, which survives any row order.
+function sortedTrades(inputTrades: BitgetTradeLog[]): BitgetTradeLog[] {
+  return [...inputTrades].sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export function flagsByTrade(
+  inputTrades: BitgetTradeLog[],
+  flags: LeakFlag[],
+): Map<BitgetTradeLog, LeakFlag[]> {
+  const trades = sortedTrades(inputTrades);
+  const m = new Map<BitgetTradeLog, LeakFlag[]>();
+  for (const f of flags) {
+    const t = trades[f.tradeIndex];
+    if (!t) continue;
+    const arr = m.get(t) ?? [];
+    arr.push(f);
+    m.set(t, arr);
+  }
+  return m;
+}
+
+export function leakCostsByTrade(
+  inputTrades: BitgetTradeLog[],
+  flags: LeakFlag[],
+): Map<BitgetTradeLog, number> {
+  const trades = sortedTrades(inputTrades);
+  const m = new Map<BitgetTradeLog, number>();
+  for (const f of flags) {
+    const t = trades[f.tradeIndex];
+    if (!t) continue;
+    m.set(t, (m.get(t) ?? 0) + cappedFlagCost(f, t));
+  }
+  return m;
+}
+
 export interface WhatIfResult {
   curve: CurvePoint[];
   cleanPnl: number;
@@ -45,12 +84,12 @@ export function computeCleanCurveWithRules(
   flags: LeakFlag[],
   enabled: Set<string>,
 ): WhatIfResult {
-  const trades = [...inputTrades].sort((a, b) => a.timestamp - b.timestamp);
-  const byOrder = new Map<string, LeakFlag[]>();
+  const trades = sortedTrades(inputTrades);
+  const byIndex = new Map<number, LeakFlag[]>();
   for (const f of flags) {
-    const arr = byOrder.get(f.orderId) ?? [];
+    const arr = byIndex.get(f.tradeIndex) ?? [];
     arr.push(f);
-    byOrder.set(f.orderId, arr);
+    byIndex.set(f.tradeIndex, arr);
   }
   let actualCum = 0;
   let cleanCum = 0;
@@ -58,10 +97,9 @@ export function computeCleanCurveWithRules(
     const net = t.realizedPnl - t.fee;
     actualCum += net;
     let recovery = 0;
-    for (const f of byOrder.get(t.orderId) ?? []) {
+    for (const f of byIndex.get(i) ?? []) {
       if (!enabled.has(f.ruleId)) continue;
-      if (f.tag === 'PREMATURE_EXIT') recovery += f.dollarCost;
-      else recovery += Math.min(f.dollarCost, Math.max(0, -t.realizedPnl) + t.fee);
+      recovery += cappedFlagCost(f, t);
     }
     cleanCum += net + recovery;
     return {
@@ -99,10 +137,8 @@ export interface HeatmapResult {
 
 export const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export function computeLeakHeatmap(
-  trades: BitgetTradeLog[],
-  leakByOrderId: Map<string, number>,
-): HeatmapResult {
+export function computeLeakHeatmap(trades: BitgetTradeLog[], flags: LeakFlag[]): HeatmapResult {
+  const leakByTrade = leakCostsByTrade(trades, flags);
   const cells: HeatCell[] = [];
   for (let dow = 0; dow < 7; dow++) {
     for (let hour = 0; hour < 24; hour++) {
@@ -116,7 +152,7 @@ export function computeLeakHeatmap(
     const c = at(dow, d.getUTCHours());
     c.trades += 1;
     c.pnl += t.realizedPnl - t.fee;
-    c.leak += leakByOrderId.get(t.orderId) ?? 0;
+    c.leak += leakByTrade.get(t) ?? 0;
   }
   let maxLeak = 0;
   let maxTrades = 0;
@@ -203,9 +239,10 @@ function downsample(xs: number[], max = 90): number[] {
 export function computeSparkSeries(
   inputTrades: BitgetTradeLog[],
   curve: CurvePoint[],
-  leakByOrderId: Map<string, number>,
+  flags: LeakFlag[],
 ): SparkSeries {
-  const trades = [...inputTrades].sort((a, b) => a.timestamp - b.timestamp);
+  const trades = sortedTrades(inputTrades);
+  const leakByTrade = leakCostsByTrade(trades, flags);
   const equity = downsample(curve.map((p) => p.actual));
   const winRate: number[] = [];
   let cumLeak = 0;
@@ -213,7 +250,7 @@ export function computeSparkSeries(
   trades.forEach((t, i) => {
     const window = trades.slice(Math.max(0, i - 9), i + 1);
     winRate.push((window.filter((w) => w.realizedPnl > 0).length / window.length) * 100);
-    cumLeak += leakByOrderId.get(t.orderId) ?? 0;
+    cumLeak += leakByTrade.get(t) ?? 0;
     cumLeakArr.push(cumLeak);
   });
   return { equity, winRate: downsample(winRate), cumLeak: downsample(cumLeakArr) };

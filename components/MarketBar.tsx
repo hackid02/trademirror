@@ -43,6 +43,8 @@ export default function MarketBar() {
   // Server refresh (60s) + local random-walk ticks (2s)
   useEffect(() => {
     let stop = false;
+    // Per-symbol liveness mirrored for the tick loop (same closure, no staleness).
+    const liveMap: Record<string, boolean> = {};
     const load = async () => {
       try {
         const res = await fetch('/api/tickers', { cache: 'no-store' });
@@ -52,20 +54,35 @@ export default function MarketBar() {
         const next: Record<string, TickState> = {};
         for (const t of data.tickers) {
           baseRef.current[t.symbol] = t.price;
+          liveMap[t.symbol] = t.live;
           next[t.symbol] = { price: t.price, dir: 0 };
         }
         setTicks(next);
       } catch {
         if (stop) return;
-        // total failure: seed sim bases locally
+        // Total failure: seed sim bases locally AND publish a feed so the
+        // tape renders with SIM badges instead of an empty strip.
         const sim: Record<string, number> = {
           BTCUSDT: 112400, ETHUSDT: 3840, SOLUSDT: 178.5,
           RNVDAUSDT: 186.4, RTSLAUSDT: 251.2, RAAPLUSDT: 232.8,
         };
         baseRef.current = sim;
+        for (const s of Object.keys(sim)) liveMap[s] = false;
         const next: Record<string, TickState> = {};
         for (const [s, p] of Object.entries(sim)) next[s] = { price: p, dir: 0 };
         setTicks(next);
+        setFeed({
+          tickers: Object.entries(sim).map(([symbol, price]) => ({
+            symbol,
+            short: symbol.replace(/USDT$/, ''),
+            price,
+            chg24: 0,
+            live: false,
+          })),
+          fearGreed: { value: 50, label: 'Neutral', live: false },
+          live: false,
+          ts: Date.now(),
+        });
       }
     };
     void load();
@@ -74,6 +91,13 @@ export default function MarketBar() {
       setTicks((prev) => {
         const next: Record<string, TickState> = {};
         for (const [s, cur] of Object.entries(prev)) {
+          // Live quotes stay pinned to the server value; only simulated
+          // tickers drift — a tape read as "live" must never random-walk.
+          if (liveMap[s]) {
+            const price = baseRef.current[s] ?? cur.price;
+            next[s] = { price, dir: 0 };
+            continue;
+          }
           const drift = (Math.random() - 0.5) * 0.0012;
           const price = cur.price * (1 + drift);
           next[s] = { price, dir: drift > 0.00006 ? 1 : drift < -0.00006 ? -1 : 0 };

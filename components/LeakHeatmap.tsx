@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { BitgetTradeLog } from '@/lib/types';
+import type { BitgetTradeLog, LeakFlag } from '@/lib/types';
 import { computeLeakHeatmap, DOW_LABELS } from '@/lib/analysis';
 import { fmtUsd } from '@/lib/engine';
 import { Card, SectionTitle } from './ui';
@@ -50,16 +50,16 @@ function cellBackground(leak: number, max: number, trades: number, hour: number)
 
 export default function LeakHeatmap({
   trades,
-  leakByOrderId,
+  flags,
   selected,
   onCellClick,
 }: {
   trades: BitgetTradeLog[];
-  leakByOrderId: Map<string, number>;
+  flags: LeakFlag[];
   selected?: SessionCell | null;
   onCellClick?: (cell: SessionCell) => void;
 }) {
-  const heat = useMemo(() => computeLeakHeatmap(trades, leakByOrderId), [trades, leakByOrderId]);
+  const heat = useMemo(() => computeLeakHeatmap(trades, flags), [trades, flags]);
   const weekendShare = heat.totalLeak > 0 ? heat.weekendLeak / heat.totalLeak : 0;
 
   return (

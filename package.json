@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "check": "tsx scripts/check.ts",
-    "verify": "tsx scripts/verify.ts"
+    "verify": "tsx scripts/verify.ts",
+    "sweep": "node scripts/sweeps/qa-sweep.js",
+    "sweep2": "node scripts/sweeps/qa-sweep2.js"
   },
   "dependencies": {
     "next": "16.3.5",
@@ -22,6 +24,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"

@@ -12,6 +12,7 @@ export interface AskPayload {
   score: number;
   grade: string;
   archetype: string;
+  qwen?: boolean; // explicit false = force the deterministic fallback (cloud opt-out)
 }
 
 export interface AskAction {

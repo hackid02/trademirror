@@ -18,7 +18,7 @@ import LeakHeatmap, { type SessionCell } from '@/components/LeakHeatmap';
 import JudgeTour, { TourFab, type TourStep } from '@/components/JudgeTour';
 import { Reveal } from '@/components/motion';
 import { Card } from '@/components/ui';
-import { fmtUsd, runAudit } from '@/lib/engine';
+import { cappedFlagCost, fmtUsd, runAudit } from '@/lib/engine';
 import { ENGINE_RULE_IDS, computeCleanCurveWithRules, computeSparkSeries } from '@/lib/analysis';
 import { buildPersonas } from '@/lib/mockProfiles';
 import { CSV_TEMPLATE, parseUpload } from '@/lib/parser';
@@ -70,6 +70,9 @@ export default function TradeMirrorPage() {
   const [auditLatency, setAuditLatency] = useState(0);
   const [auditDegraded, setAuditDegraded] = useState(false);
   const [auditRunning, setAuditRunning] = useState(false);
+  // Cloud LLM synthesis is OPT-IN (default off): enabling sends aggregate
+  // metrics + up to 12 flagged-trade samples to the Qwen gateway.
+  const [qwenOptIn, setQwenOptIn] = useState(false);
 
   const [armed, setArmed] = useState<string[]>([...ENGINE_RULE_IDS]);
   const [tourOpen, setTourOpen] = useState(false);
@@ -105,8 +108,8 @@ export default function TradeMirrorPage() {
   );
 
   const sparks = useMemo(
-    () => computeSparkSeries(trades, comp.curve, comp.leakByOrderId),
-    [trades, comp.curve, comp.leakByOrderId],
+    () => computeSparkSeries(trades, comp.curve, comp.flags),
+    [trades, comp.curve, comp.flags],
   );
 
   const toggleRule = useCallback((engineRuleId: string) => {
@@ -136,22 +139,13 @@ export default function TradeMirrorPage() {
     [personas],
   );
 
-  const flagsByOrder = useMemo(() => {
-    const m = new Map<string, typeof comp.flags>();
-    for (const f of comp.flags) {
-      const arr = m.get(f.orderId) ?? [];
-      arr.push(f);
-      m.set(f.orderId, arr);
-    }
-    return m;
-  }, [comp]);
-
   // Adopt pre-paint theme + stored prefs after mount (keeps SSR/client identical)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-sync from DOM/localStorage; lazy init would SSR/client-mismatch
     if (document.documentElement.getAttribute('data-theme') === 'light') setTheme('light');
     if (readStored('tm-guided') === '1') setGuided(true);
     if (readStored('tm-tour-seen') === '1') setTourSeen(true);
+    if (readStored('tm-qwen-optin') === '1') setQwenOptIn(true);
   }, []);
 
   // Theme → <html data-theme> (+ persist the manual toggle)
@@ -202,11 +196,13 @@ export default function TradeMirrorPage() {
       score: comp.metrics.score,
       grade: comp.metrics.grade,
       archetype: comp.metrics.archetype,
+      qwen: qwenOptIn,
     }),
-    [comp, personaName],
+    [comp, personaName, qwenOptIn],
   );
 
-  const runQwen = useCallback(async () => {
+  const runQwen = useCallback(
+    async (qwenOverride?: boolean) => {
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -220,14 +216,14 @@ export default function TradeMirrorPage() {
           side: t?.side ?? '?',
           pnl: t?.realizedPnl ?? 0,
           tag: f.tag,
-          leakUsd: Math.round(f.dollarCost * 100) / 100,
+          leakUsd: t ? Math.round(cappedFlagCost(f, t) * 100) / 100 : 0,
           trigger: f.triggerDetail,
         };
       });
       const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...auditPayload(), samples }),
+        body: JSON.stringify({ ...auditPayload(), samples, qwen: qwenOverride ?? qwenOptIn }),
         signal: ctrl.signal,
       });
       const data = (await res.json()) as AuditApiResponse;
@@ -242,7 +238,22 @@ export default function TradeMirrorPage() {
     } finally {
       setAuditRunning(false);
     }
-  }, [comp, trades, auditPayload]);
+    },
+    [comp, trades, auditPayload, qwenOptIn],
+  );
+
+  // Opt-in toggle: persists the choice and re-runs synthesis immediately so
+  // the user sees exactly which engine narrates their audit.
+  const toggleQwen = useCallback(() => {
+    const next = !qwenOptIn;
+    setQwenOptIn(next);
+    try {
+      window.localStorage.setItem('tm-qwen-optin', next ? '1' : '0');
+    } catch {
+      /* storage unavailable — session-only */
+    }
+    void runQwen(next);
+  }, [qwenOptIn, runQwen]);
 
   // Auto-run synthesis whenever the flow changes (fast; mock fallback when offline)
   const flowKey = custom ? `custom:${custom.trades.length}:${custom.name}` : activeId;
@@ -278,7 +289,7 @@ export default function TradeMirrorPage() {
           side: t?.side ?? '?',
           pnl: t?.realizedPnl ?? 0,
           tag: f.tag,
-          leakUsd: Math.round(f.dollarCost * 100) / 100,
+          leakUsd: t ? Math.round(cappedFlagCost(f, t) * 100) / 100 : 0,
           trigger: f.triggerDetail,
           narrative: f.narrative,
         };
@@ -286,13 +297,17 @@ export default function TradeMirrorPage() {
       score: base.score,
       grade: base.grade,
       archetype: base.archetype,
+      qwen: qwenOptIn,
     };
-  }, [auditPayload, comp.flags, trades]);
+  }, [auditPayload, comp.flags, trades, qwenOptIn]);
 
   const onCite = useCallback((orderId: string) => {
     setHighlight(orderId);
     window.setTimeout(() => {
-      document.getElementById(`log-${orderId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (document.querySelector(`[data-log="${orderId}"]`) ?? document.getElementById(`log-${orderId}`))?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
     }, 60);
   }, []);
 
@@ -391,8 +406,10 @@ export default function TradeMirrorPage() {
     const name = f.name.replace(/\.(csv|json)$/i, '');
     setCustom({ name, trades: parsed.trades });
     const msgs = [`✓ Ingested ${parsed.trades.length} trades from ${f.name} — now auditing ${name}.`];
-    if (parsed.errors.length > 0) msgs.push(`${parsed.errors.length} rows skipped (see console).`);
-    console.warn('[TradeMirror] skipped rows:', parsed.errors);
+    if (parsed.errors.length > 0) msgs.push(`${parsed.errors.length} rows rejected (see console).`);
+    if (parsed.warnings.length > 0) msgs.push(...parsed.warnings.slice(0, 4));
+    console.warn('[TradeMirror] rejected rows:', parsed.errors);
+    if (parsed.warnings.length > 0) console.warn('[TradeMirror] row warnings:', parsed.warnings);
     setNotices(msgs);
     // Make the switch unmissable: glide to the fresh scorecard.
     requestAnimationFrame(() => {
@@ -515,13 +532,31 @@ export default function TradeMirrorPage() {
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => setNotices([])}
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <button
+                  onClick={toggleQwen}
+                  title={
+                    qwenOptIn
+                      ? 'Cloud synthesis ON — aggregate metrics + up to 12 flagged-trade samples go to the Qwen gateway'
+                      : 'Cloud synthesis OFF — synthesis runs on the deterministic local fallback; nothing leaves the browser'
+                  }
+                  className="font-num rounded-lg px-2 py-1 text-[11px] font-bold"
+                  style={
+                    qwenOptIn
+                      ? { border: '1px solid var(--accent)', color: 'var(--accent)' }
+                      : { border: '1px solid var(--border-strong)', color: 'var(--ink-3)' }
+                  }
+                >
+                  {qwenOptIn ? '☁ Cloud synthesis: ON' : '☁ Cloud synthesis: OFF'}
+                </button>
+                <button
+                  onClick={() => setNotices([])}
                 className="font-num rounded-lg px-2 py-1 text-[11px]"
                 style={{ border: '1px solid var(--border-strong)', color: 'var(--ink-3)' }}
               >
                 dismiss
-              </button>
+                </button>
+              </div>
             </Card>
           )}
 
@@ -595,7 +630,7 @@ export default function TradeMirrorPage() {
                 netPnl={m.netPnl}
                 cleanPnl={whatIf.cleanPnl}
                 trades={trades}
-                flagsByOrder={flagsByOrder}
+                flags={comp.flags}
                 onMarkerClick={onCite}
               />
             </Reveal>
@@ -608,7 +643,7 @@ export default function TradeMirrorPage() {
             </Reveal>
             {!guided && (
               <Reveal className="lg:col-span-2" tour="heatmap" delay={90}>
-                <LeakHeatmap trades={trades} leakByOrderId={comp.leakByOrderId} selected={logFilter} onCellClick={onCellClick} />
+                <LeakHeatmap trades={trades} flags={comp.flags} selected={logFilter} onCellClick={onCellClick} />
               </Reveal>
             )}
           </div>
@@ -644,8 +679,7 @@ export default function TradeMirrorPage() {
             <Reveal tour="log">
               <ForensicLog
                 trades={trades}
-                flagsByOrder={flagsByOrder}
-                leakByOrderId={comp.leakByOrderId}
+                flags={comp.flags}
                 highlightOrderId={highlight}
                 sessionFilter={logFilter}
                 onClearFilter={() => setLogFilter(null)}

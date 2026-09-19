@@ -43,6 +43,7 @@ interface AskBody {
   score?: number;
   grade?: string;
   archetype?: string;
+  qwen?: boolean; // explicit false = force the deterministic fallback (cloud opt-out)
 }
 
 const num = (m: Record<string, number | string> | undefined, k: string, fb = 0): number => {
@@ -206,7 +207,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'question required' }, { status: 400 });
   }
   const apiKey = process.env.BITGET_QWEN_API_KEY?.trim();
-  if (!apiKey) {
+  // Explicit client opt-out (the UI default): the deterministic keyword
+  // responder answers without trade-derived data leaving for the LLM gateway.
+  if (!apiKey || body.qwen === false) {
     return NextResponse.json({
       source: 'mock',
       model: 'trademirror-deterministic/1.0',

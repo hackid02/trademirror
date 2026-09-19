@@ -35,8 +35,23 @@ export function nyseSessionLabel(ts: number): string {
   if (day === 5 && mins >= 20 * 60) return 'FRI · post-close';
   if (day === 6) return 'SAT · closed';
   if (day === 0 && mins < 23 * 60) return 'SUN · closed';
-  if (mins >= 20 * 60 || mins < 13 * 60 + 30) return 'overnight · closed';
+  // Late Sunday matches the gate above (vacuum over — Asian liquidity is back),
+  // and the overnight branch carries the same weekday guard as isNyseClosed,
+  // so gate and label can never contradict each other.
+  if (day === 0) return 'SUN · late — Asian liquidity back';
+  if (day >= 1 && day <= 5 && (mins >= 20 * 60 || mins < 13 * 60 + 30)) return 'overnight · closed';
   return 'NYSE open';
+}
+
+// ─── Single definition of attributable leak ──────────────────────────────────
+// Loss-side flags can at most zero their own trade (loss + fee) — never
+// manufacture profit; premature-exit opportunity is additive. EVERY aggregate
+// (totalLeak, groups, leakByOrderId, score inputs) AND the clean curve use
+// this, so totalLeakUsd ≡ cleanPnl − netPnl always reconciles.
+export function cappedFlagCost(f: LeakFlag, t: BitgetTradeLog | undefined): number {
+  if (f.tag === 'PREMATURE_EXIT') return f.dollarCost;
+  if (!t) return 0;
+  return Math.min(f.dollarCost, Math.max(0, -t.realizedPnl) + t.fee);
 }
 
 // ─── Rule 1: Weekend rToken Liquidity Trap ──────────────────────────────────
@@ -107,7 +122,10 @@ function ruleDisposition(
   const panicked = t.closeReason === 'manual_panic';
   const clipped = t.holdDurationSeconds < PREMATURE_HOLD_SEC && t.orderType === 'market';
   if (!panicked && !clipped) return null;
-  const dollarCost = t.realizedPnl * RUNNER_MULT;
+  // Fade in across a 0.10 band instead of cliff-switching at 0.25: full weight
+  // at ratio ≤ 0.15, zero at the gate — boundary inputs move dollars smoothly.
+  const fade = Math.min(1, Math.max(0, (DISPOSITION_RATIO_ALERT - ratio) / 0.1));
+  const dollarCost = t.realizedPnl * RUNNER_MULT * fade;
   return {
     tradeIndex: i,
     orderId: t.orderId,
@@ -236,27 +254,25 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
     if (f4) flags.push(f4);
   }
 
+  const capped = (f: LeakFlag): number => cappedFlagCost(f, trades[f.tradeIndex]);
   const flaggedOrderIds = new Set(flags.map((f) => f.orderId));
   const leakByOrderId = new Map<string, number>();
   for (const f of flags) {
-    leakByOrderId.set(f.orderId, (leakByOrderId.get(f.orderId) ?? 0) + f.dollarCost);
+    leakByOrderId.set(f.orderId, (leakByOrderId.get(f.orderId) ?? 0) + capped(f));
   }
-  const totalLeakUsd = flags.reduce((s, f) => s + f.dollarCost, 0);
+  const totalLeakUsd = flags.reduce((s, f) => s + capped(f), 0);
 
-  // Curves: actual net vs behavior-filtered clean
+  // Curves: actual net vs behavior-filtered clean. Flags match by tradeIndex
+  // (stable under duplicate orderIds from partial-fill exports), and recovery
+  // uses the same capped cost as the aggregates — clean − net ≡ totalLeak.
   let actualCum = 0;
   let cleanCum = 0;
   const curve: CurvePoint[] = trades.map((t, i) => {
     const net = t.realizedPnl - t.fee;
     actualCum += net;
-    // Clean PnL recovers attributed leak, but never manufactures profit above
-    // (loss + fee) for loss-side flags; premature-exit opportunity is additive.
-    const orderFlags = flags.filter((f) => f.orderId === t.orderId);
+    const orderFlags = flags.filter((f) => f.tradeIndex === i);
     let recovery = 0;
-    for (const f of orderFlags) {
-      if (f.tag === 'PREMATURE_EXIT') recovery += f.dollarCost;
-      else recovery += Math.min(f.dollarCost, Math.max(0, -t.realizedPnl) + t.fee);
-    }
+    for (const f of orderFlags) recovery += capped(f);
     cleanCum += net + recovery;
     return {
       i,
@@ -277,14 +293,20 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
     maxDrawdown = Math.min(maxDrawdown, p.actual - peak);
   }
 
-  // Per-trade Sharpe (annualised-ish scaling)
-  const nets = trades.map((t) => t.realizedPnl - t.fee);
-  const mean = nets.length ? nets.reduce((s, n) => s + n, 0) / nets.length : 0;
-  const variance = nets.length
-    ? nets.reduce((s, n) => s + (n - mean) ** 2, 0) / nets.length
+  // Daily Sharpe: trade nets grouped by UTC day, annualised with √252.
+  // Zero when fewer than two active days (no dispersion to measure).
+  const dailyNets = new Map<string, number>();
+  for (const t of trades) {
+    const day = new Date(t.timestamp).toISOString().slice(0, 10);
+    dailyNets.set(day, (dailyNets.get(day) ?? 0) + (t.realizedPnl - t.fee));
+  }
+  const dayReturns = [...dailyNets.values()];
+  const dayMean = dayReturns.length ? dayReturns.reduce((s, n) => s + n, 0) / dayReturns.length : 0;
+  const dayVar = dayReturns.length
+    ? dayReturns.reduce((s, n) => s + (n - dayMean) ** 2, 0) / dayReturns.length
     : 0;
-  const std = Math.sqrt(variance);
-  const sharpe = std > 0 ? (mean / std) * Math.sqrt(Math.max(nets.length, 1)) : 0;
+  const dayStd = Math.sqrt(dayVar);
+  const sharpe = dayStd > 0 && dayReturns.length > 1 ? (dayMean / dayStd) * Math.sqrt(252) : 0;
 
   const byTag = (tag: LeakTag) => flags.filter((f) => f.tag === tag);
   const weekend = byTag('WEEKEND_SPREAD');
@@ -293,11 +315,22 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
   const cluster = byTag('EXHAUSTION_CLUSTER');
 
   // Behavioral score — penalties calibrated to master-spec bands
-  const weekendLeak = weekend.reduce((s, f) => s + f.dollarCost, 0);
+  const weekendLeak = weekend.reduce((s, f) => s + capped(f), 0);
   const revengeCount = revenge.length;
-  const tiltLeak = revenge.reduce((s, f) => s + f.dollarCost, 0);
-  // Cluster flags fire per-trade inside a 2h window — collapse to distinct windows.
-  const clusterEvents = cluster.length === 0 ? 0 : Math.ceil(new Set(cluster.map((f) => f.orderId)).size / 6);
+  const tiltLeak = revenge.reduce((s, f) => s + capped(f), 0);
+  // Cluster flags fire per-trade inside a 2h window — count disjoint windows.
+  const clusterTimes = cluster
+    .map((f) => trades[f.tradeIndex]?.timestamp ?? -1)
+    .filter((t) => t >= 0)
+    .sort((a, b) => a - b);
+  let clusterEvents = 0;
+  let windowEnd = -1;
+  for (const t of clusterTimes) {
+    if (t >= windowEnd) {
+      clusterEvents += 1;
+      windowEnd = t + CLUSTER_WINDOW_MS;
+    }
+  }
   const feeDrag = grossWin > 0 ? totalFees / grossWin : totalFees > 0 ? 1 : 0;
   const dispositionPenalty =
     dispositionRatio < DISPOSITION_RATIO_ALERT
@@ -335,7 +368,7 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
     avgWinHoldSec,
     avgLossHoldSec,
     dispositionRatio,
-    profitFactor: grossLoss < 0 ? grossWin / Math.abs(grossLoss) : grossWin > 0 ? 99 : 0,
+    profitFactor: grossLoss < 0 ? grossWin / Math.abs(grossLoss) : grossWin > 0 ? Number.POSITIVE_INFINITY : 0,
     sharpe,
     maxDrawdown,
     totalLeakUsd,
@@ -346,8 +379,8 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
     archetype: archetypeFor({
       weekend: weekendLeak,
       revenge: tiltLeak,
-      premature: premature.reduce((s, f) => s + f.dollarCost, 0),
-      cluster: cluster.reduce((s, f) => s + f.dollarCost, 0),
+      premature: premature.reduce((s, f) => s + capped(f), 0),
+      cluster: cluster.reduce((s, f) => s + capped(f), 0),
       score,
     }),
     revengeCount,
@@ -404,9 +437,9 @@ export function runAudit(inputTrades: BitgetTradeLog[]): AuditComputation {
       tag: g.tag,
       ruleId: g.ruleId,
       biasName: g.biasName,
-      dollarCost: g.items.reduce((s, f) => s + f.dollarCost, 0),
-      tradeCount: new Set(g.items.map((f) => f.orderId)).size,
-      pctOfLeak: totalLeakUsd > 0 ? g.items.reduce((s, f) => s + f.dollarCost, 0) / totalLeakUsd : 0,
+      dollarCost: g.items.reduce((s, f) => s + capped(f), 0),
+      tradeCount: new Set(g.items.map((f) => f.tradeIndex)).size,
+      pctOfLeak: totalLeakUsd > 0 ? g.items.reduce((s, f) => s + capped(f), 0) / totalLeakUsd : 0,
       rootCause: g.rootCause,
       counterfactual: g.counterfactual,
     }))

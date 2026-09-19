@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import type { BitgetTradeLog, LeakFlag, LeakTag, QwenAudit } from '@/lib/types';
-import { fmtDur, fmtUsd, nyseSessionLabel } from '@/lib/engine';
-import { DOW_LABELS, mapRuleToEngine } from '@/lib/analysis';
+import { cappedFlagCost, fmtDur, fmtUsd, nyseSessionLabel } from '@/lib/engine';
+import { DOW_LABELS, flagsByTrade, leakCostsByTrade, mapRuleToEngine } from '@/lib/analysis';
 import { Card, SectionTitle, TagChip } from './ui';
 
 function fmtTime(ts: number): string {
@@ -18,11 +18,11 @@ export interface SessionFilter {
 }
 
 const PAGE = 60;
+const EXPANDED_CAP = 500; // "show all" still caps DOM nodes on whale-size logs
 
 export default function ForensicLog({
   trades,
-  flagsByOrder,
-  leakByOrderId,
+  flags,
   highlightOrderId,
   sessionFilter,
   onClearFilter,
@@ -31,8 +31,7 @@ export default function ForensicLog({
   audit,
 }: {
   trades: BitgetTradeLog[];
-  flagsByOrder: Map<string, LeakFlag[]>;
-  leakByOrderId: Map<string, number>;
+  flags: LeakFlag[];
   highlightOrderId?: string | null;
   sessionFilter?: SessionFilter | null;
   onClearFilter?: () => void;
@@ -45,6 +44,10 @@ export default function ForensicLog({
   const [expanded, setExpanded] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Object-identity joins: correct under duplicate orderIds (partial fills).
+  const byTrade = useMemo(() => flagsByTrade(trades, flags), [trades, flags]);
+  const leakByTrade = useMemo(() => leakCostsByTrade(trades, flags), [trades, flags]);
+
   const base = useMemo(() => {
     let sorted = [...trades].sort((a, b) => b.timestamp - a.timestamp);
     if (sessionFilter) {
@@ -53,27 +56,27 @@ export default function ForensicLog({
         return (d.getUTCDay() + 6) % 7 === sessionFilter.dow && d.getUTCHours() === sessionFilter.hour;
       });
     }
-    return biasOnly ? sorted.filter((t) => flagsByOrder.has(t.orderId)) : sorted;
-  }, [trades, biasOnly, flagsByOrder, sessionFilter]);
+    return biasOnly ? sorted.filter((t) => byTrade.has(t)) : sorted;
+  }, [trades, biasOnly, byTrade, sessionFilter]);
 
   // Tag counts over the session/bias-filtered set (powers the chip row)
   const tagCounts = useMemo(() => {
     const m = new Map<LeakTag, number>();
     for (const t of base) {
-      for (const f of flagsByOrder.get(t.orderId) ?? []) {
+      for (const f of byTrade.get(t) ?? []) {
         m.set(f.tag, (m.get(f.tag) ?? 0) + 1);
       }
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  }, [base, flagsByOrder]);
+  }, [base, byTrade]);
 
   const rows = useMemo(() => {
-    const filtered = tagFilter ? base.filter((t) => (flagsByOrder.get(t.orderId) ?? []).some((f) => f.tag === tagFilter)) : base;
+    const filtered = tagFilter ? base.filter((t) => (byTrade.get(t) ?? []).some((f) => f.tag === tagFilter)) : base;
     if (sortMode === 'leak') {
-      return [...filtered].sort((a, b) => (leakByOrderId.get(b.orderId) ?? 0) - (leakByOrderId.get(a.orderId) ?? 0));
+      return [...filtered].sort((a, b) => (leakByTrade.get(b) ?? 0) - (leakByTrade.get(a) ?? 0));
     }
     return filtered;
-  }, [base, tagFilter, sortMode, flagsByOrder, leakByOrderId]);
+  }, [base, tagFilter, sortMode, byTrade, leakByTrade]);
 
   // engine rule → Qwen guardrail id (powers the per-flag fix links)
   const links = useMemo(() => {
@@ -101,8 +104,8 @@ export default function ForensicLog({
     }
   };
 
-  const flaggedCount = flagsByOrder.size;
-  const visible = expanded ? rows : rows.slice(0, PAGE);
+  const flaggedCount = byTrade.size;
+  const visible = expanded ? rows.slice(0, EXPANDED_CAP) : rows.slice(0, PAGE);
 
   return (
     <Card className="h-full p-5" hover>
@@ -205,15 +208,16 @@ export default function ForensicLog({
             No trades under this filter — try “All trades” or clear the session/tag filter.
           </div>
         )}
-        {visible.map((t) => {
-          const flags = flagsByOrder.get(t.orderId) ?? [];
-          const leak = leakByOrderId.get(t.orderId) ?? 0;
+        {visible.map((t, vi) => {
+          const tFlags = byTrade.get(t) ?? [];
+          const leak = leakByTrade.get(t) ?? 0;
           const pnlTone = t.realizedPnl > 0 ? 'var(--alpha)' : t.realizedPnl < 0 ? 'var(--risk)' : 'var(--ink-3)';
           const hl = highlightOrderId === t.orderId;
           return (
             <details
-              key={t.orderId}
-              id={`log-${t.orderId}`}
+              key={`${t.orderId}#${vi}`}
+              id={`log-${t.orderId}-${vi}`}
+              data-log={t.orderId}
               open={hl ? true : undefined}
               className="group scroll-mt-40 rounded-xl"
               style={{
@@ -244,20 +248,20 @@ export default function ForensicLog({
                 <span className="font-num ml-auto text-[13px] font-bold" style={{ color: pnlTone }}>
                   {fmtUsd(t.realizedPnl, true)}
                 </span>
-                {flags.length > 0 ? (
+                {tFlags.length > 0 ? (
                   <span className="flex items-center gap-1.5">
-                    <TagChip tag={flags[0].tag} />
-                    {flags.length > 1 && (
+                    <TagChip tag={tFlags[0].tag} />
+                    {tFlags.length > 1 && (
                       <span className="flex items-center gap-1.5">
                         <span className="font-num text-[10px] font-semibold" style={{ color: 'var(--ink-3)' }}>
-                          +{flags.length - 1}
+                          +{tFlags.length - 1}
                         </span>
                         <span
                           className="font-num rounded-md px-1.5 py-0.5 text-[10px] font-bold"
                           style={{ color: 'var(--accent)', background: 'var(--accent-soft)' }}
                           title="Independent detectors converged on this trade — confluence, not a single signal"
                         >
-                          ◈ {flags.length} agree
+                          ◈ {tFlags.length} agree
                         </span>
                       </span>
                     )}
@@ -274,12 +278,12 @@ export default function ForensicLog({
               <div className="border-t px-3 py-3" style={{ borderColor: 'var(--border)' }}>
                 {/* Etherscan grammar: status first, then the record */}
                 <div className="flex flex-wrap items-center gap-2">
-                  {flags.length > 0 ? (
+                  {tFlags.length > 0 ? (
                     <span
                       className="font-num rounded-md px-2 py-1 text-[10.5px] font-bold"
                       style={{ color: 'var(--risk)', background: 'var(--risk-soft)' }}
                     >
-                      ◉ FLAGGED · {flags.length} bias{flags.length === 1 ? '' : 'es'}{leak > 0 ? ` · ${fmtUsd(-leak)} leak` : ' · $0 realized — process foul'}
+                      ◉ FLAGGED · {tFlags.length} bias{tFlags.length === 1 ? '' : 'es'}{leak > 0 ? ` · ${fmtUsd(-leak)} leak` : ' · $0 realized — process foul'}
                     </span>
                   ) : (
                     <span
@@ -314,9 +318,9 @@ export default function ForensicLog({
                   <span>session <b>{nyseSessionLabel(t.timestamp)}</b></span>
                   <span>exit <b>{t.closeReason ?? '—'}</b></span>
                 </div>
-                {flags.length > 0 && (
+                {tFlags.length > 0 && (
                   <div className="mt-2 flex flex-col gap-2">
-                    {flags.map((f, i) => {
+                    {tFlags.map((f, i) => {
                       const ruleId = links.get(f.ruleId);
                       return (
                         <div key={i} className="rounded-lg p-2.5" style={{ background: 'var(--risk-soft)', border: '1px solid var(--border)' }}>
@@ -337,7 +341,7 @@ export default function ForensicLog({
                               {f.ruleId} · {f.triggerDetail}
                             </span>
                             <span className="font-num text-[12px] font-bold" style={{ color: 'var(--risk)' }}>
-                              {fmtUsd(-f.dollarCost)}
+                              {fmtUsd(-cappedFlagCost(f, t))}
                             </span>
                           </div>
                           <p className="mt-1 text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
@@ -358,8 +362,13 @@ export default function ForensicLog({
             className="font-num rounded-xl px-3 py-2.5 text-[12px] font-semibold transition-transform hover:scale-[1.01]"
             style={{ border: '1px solid var(--border-strong)', color: 'var(--ink-2)' }}
           >
-            Show all {rows.length} trades · showing {PAGE}
+            Show all {Math.min(rows.length, EXPANDED_CAP)} trades · showing {PAGE}
           </button>
+        )}
+        {expanded && rows.length > EXPANDED_CAP && (
+          <div className="font-num rounded-xl px-3 py-2 text-center text-[11px]" style={{ background: 'var(--surface-2)', color: 'var(--ink-3)' }}>
+            Showing first {EXPANDED_CAP} of {rows.length} — narrow the filters to inspect the rest.
+          </div>
         )}
       </div>
     </Card>

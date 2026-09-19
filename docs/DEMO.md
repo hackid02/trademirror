@@ -7,13 +7,13 @@ Persona: **Weekend rToken Chaser** (default). Total: ~2:00.
 
 **0:00–0:15 — Hook: the question**
 "PnL charts show what happened. TradeMirror diagnoses why money bled."
-Show the desk loading: score 64 · C, leak −$2,857.54, pipeline 00→06.
+Show the desk loading: score 67 · C, leak −$2,508.92, pipeline 00→06.
 
 **0:15–0:50 — Guided tour (research task: question → insight)**
 Click "60-sec guided tour." Let 4–5 key stops play, narrate over them:
 1. Scorecard — behavioral score + archetype "Weekend Liquidity Donor"
 2. Counterfactual curve — actual −$3,502 vs behavior-filtered −$993 ("discipline was worth +$2,509")
-3. Heatmap — "Sat+Sun = 95% of leak," click the worst cell (Sun 08:00Z)
+3. Heatmap — "Sat+Sun = 94% of leak," click the worst cell (Sun 08:00Z)
 4. A flagged receipt in the forensic log (jumped from the heatmap click)
 
 **0:50–1:20 — LUI: ask your own audit**

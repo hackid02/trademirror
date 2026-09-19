@@ -138,6 +138,9 @@ export default function FlowSelector({
             <span className="font-num mt-0.5 block text-[11px]" style={{ color: 'var(--ink-3)' }}>
               {hasCustom ? `${customCount} trades ingested` : 'Drop a Bitget UTA v3 export'}
             </span>
+            <span className="font-num mt-0.5 block text-[10px] leading-snug" style={{ color: 'var(--ink-3)' }} title="Parsing and scoring run 100% in your browser. Cloud LLM synthesis is off unless you enable it per-run — only then do aggregate metrics + up to 12 flagged-trade samples go to the Qwen gateway.">
+              Parsing 100% in-browser · cloud synthesis opt-in
+            </span>
             <span className="mt-1.5 flex items-center gap-2">
               <button
                 onClick={onUpload}
