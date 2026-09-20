@@ -9,7 +9,7 @@ import type { DefenseRule, LeakTag, QwenAudit, TopLeak } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Qwen slim prose-only brief runs ~25s typical (measured 19-35s)
+export const maxDuration = 120; // gateway variance runs 20-70s; abort guards at 110s
 
 const QWEN_BASE = 'https://hackathon.bitgetops.com/v1';
 const QWEN_MODEL = 'qwen3.8-max';
@@ -201,7 +201,7 @@ async function callQwen(body: AuditRequestBody, apiKey: string): Promise<QwenAud
       max_tokens: 1000,
       response_format: { type: 'json_object' },
     }),
-    signal: AbortSignal.timeout(55000),
+    signal: AbortSignal.timeout(110000),
   });
 
   if (!res.ok) {
